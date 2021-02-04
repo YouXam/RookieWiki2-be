@@ -1,0 +1,30 @@
+{
+  "name": "rookiewiki2-be",
+  "version": "1.0.0",
+  "description": "RookieWiki2 back-end",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YouXam/RookieWiki2-be.git"
+  },
+  "author": "YouXam",
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/YouXam/RookieWiki2-be/issues"
+  },
+  "homepage": "https://github.com/YouXam/RookieWiki2-be#readme",
+  "dependencies": {
+    "jsonwebtoken": "^8.5.1",
+    "koa": "^2.13.1",
+    "koa-body": "^4.2.0",
+    "koa-jwt": "^4.0.0",
+    "koa-router": "^10.0.0",
+    "mongodb": "^3.6.4"
+  },
+  "devDependencies": {
+    "eslint": "^7.19.0"
+  }
+}
