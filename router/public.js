@@ -4,8 +4,6 @@ const app = new Router()
 const mongodb = require('mongodb')
 const ObjectId = mongodb.ObjectId
 
-const tools = require('../lib/tools')
-
 
 module.exports = function (koa, config, db) {
 
@@ -17,16 +15,16 @@ module.exports = function (koa, config, db) {
         const args = ctx.query.search ? {
             $and: [
                 {
-                    visibility: { $lte: await tools.get_permission(ctx, db) }
+                    visibility: { $lte: ctx.state.user.permission }
                 },
                 {
                     $or: [
-                        { title: { $regex: ctx.query.search, $options: '$i'} },
-                        { content: { $regex: ctx.query.search, $options: '$i'} },
+                        { title: { $regex: ctx.query.search, $options: '$i' } },
+                        { content: { $regex: ctx.query.search, $options: '$i' } },
                     ]
                 }
             ]
-        } : { visibility: { $lte: await tools.get_permission(ctx, db) } }
+        } : { visibility: { $lte: ctx.state.user.permission } }
         const query = db.collection('articles').find(args)
         const articles = await query.skip((page - 1) * size).limit(size).toArray()
         const total = await query.count()
@@ -35,11 +33,26 @@ module.exports = function (koa, config, db) {
 
     // 获取文章
     app.get('/api/article/:id', async ctx => {
-        const article = await db.collection('articles').findOne({ _id: ObjectId(ctx.params.id), visibility: { $lte: await tools.get_permission(ctx, db) } })
+        const article = await db.collection('articles').findOne({ _id: ObjectId(ctx.params.id), visibility: { $lte: ctx.state.user.permission } })
         if (article) ctx.json({ code: 200, article })
         else ctx.json({ code: 404, msg: 'Not Found' })
     })
+    
+    // 获取文章历史记录
+    app.get('/api/article/:id/history', async ctx => {
+        const article = await db.collection('articles').findOne({ _id: ObjectId(ctx.params.id)}, { projection: { visibility: 1 }})
+        const history = await db.collection('history').find({ belong: ObjectId(ctx.params.id) }, { projection: { data: 0 } }).toArray()
+        if (history && article.visibility <= ctx.state.user.permission) ctx.json({ code: 200, data: history })
+        else ctx.json({ code: 404, msg: '找不到历史记录, 无此文章或文章被隐藏' })
+    })
 
+    // 获取历史记录详细信息
+    app.get('/api/article/:id/history/:history_id', async ctx => {
+        const article = await db.collection('articles').findOne({ _id: ObjectId(ctx.params.id)}, { projection: { visibility: 1 }})
+        const history = await db.collection('history').findOne({ _id: ObjectId(ctx.params.history_id) })
+        if (history.belong == ctx.params.id && article.visibility <= ctx.state.user.permission) ctx.json({ code: 200, data: history })
+        else ctx.json({ code: 404, msg: '找不到历史记录' })
+    })
 
     // 登录
     app.post('/api/login', async ctx => {
@@ -60,6 +73,10 @@ module.exports = function (koa, config, db) {
         const password = ctx.request.body.password
         const email = ctx.request.body.email
         if (!username || !password || !email) return ctx.json({ code: 400, msg: '参数不足' })
+        const username_rule = new RegExp('^[^+ /?$#&=]{1,30}$')
+        const email_rule = new RegExp('^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\\.[a-zA-Z0-9_-]+)+$')
+        if (!username_rule.test(username) || !email_rule.test(email))
+            return ctx.json({ code: 400, msg: '参数不合法' })
         const person = await db.collection('users').findOne({ username })
         if (person) ctx.json({ code: 400, msg: '用户名已被使用' })
         else {
