@@ -12,7 +12,7 @@ async function main() {
 
     // 添加一些中间件
     const add_before_middleware = require('./lib/before')
-    add_before_middleware(koa, config)
+    add_before_middleware(koa, config, db)
 
     // 不需要登录验证的 api
     const add_public_router = require('./router/public')
