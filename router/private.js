@@ -76,6 +76,10 @@ module.exports = function (koa, config, db) {
 
     
     // 获取用户信息
+    app.get('/api/user', async ctx => {
+        const user = await db.collection('users').findOne({ username: ctx.state.user.username }, { projection: { password: 0 } })
+        ctx.json({ code: 200, data: user })
+    })
     app.get('/api/user/:username', async ctx => {
         const user = await db.collection('users').findOne({ username: ctx.params.username }, { projection: { password: 0 } })
         ctx.json({ code: 200, data: user })

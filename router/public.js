@@ -6,6 +6,13 @@ const ObjectId = mongodb.ObjectId
 
 
 module.exports = function (koa, config, db) {
+    app.get('/api/navigation', async ctx => {
+        ctx.json({ code: 200, data: config.navigation })
+    })
+
+    app.get('/api/home', async ctx => {
+        ctx.json({ code: 200, data: config.home })
+    })
 
     // 获取文章列表
     app.get('/api/articles', async ctx => {
@@ -33,9 +40,15 @@ module.exports = function (koa, config, db) {
 
     // 获取文章
     app.get('/api/article/:id', async ctx => {
-        const article = await db.collection('articles').findOne({ _id: ObjectId(ctx.params.id), visibility: { $lte: ctx.state.user.permission } })
+        let id
+        try {
+            id = ObjectId(ctx.params.id)
+        } catch (err) {
+            return ctx.json({ code: 404, msg: '找不到文章'})
+        }
+        const article = await db.collection('articles').findOne({ _id: id, visibility: { $lte: ctx.state.user.permission } })
         if (article) ctx.json({ code: 200, article })
-        else ctx.json({ code: 404, msg: 'Not Found' })
+        else ctx.json({ code: 404, msg: '找不到文章' })
     })
     
     // 获取文章历史记录
@@ -74,11 +87,11 @@ module.exports = function (koa, config, db) {
         const email = ctx.request.body.email
         if (!username || !password || !email) return ctx.json({ code: 400, msg: '参数不足' })
         const username_rule = new RegExp('^[^+ /?$#&=]{1,30}$')
-        const email_rule = new RegExp('^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\\.[a-zA-Z0-9_-]+)+$')
+        const email_rule = new RegExp('^.+@.+\\..+$')
         if (!username_rule.test(username) || !email_rule.test(email))
             return ctx.json({ code: 400, msg: '参数不合法' })
-        const person = await db.collection('users').findOne({ username })
-        if (person) ctx.json({ code: 400, msg: '用户名已被使用' })
+        if (await db.collection('users').findOne({ username })) ctx.json({ code: 400, msg: '用户名已被使用' })
+        else if (await db.collection('users').findOne({ email })) ctx.json({ code: 400, msg: '邮箱已被注册' })
         else {
             await db.collection('users').insertOne({ username, password, email, permission: 1 })
             // 注册之后直接返回 token
