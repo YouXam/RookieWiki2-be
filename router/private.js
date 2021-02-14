@@ -7,7 +7,7 @@ const ObjectId = mongodb.ObjectId
 module.exports = function (koa, config, db) {
     // 未登录时返回错误信息
     app.use(async (ctx, next) => {
-        if (ctx.state.user) await next()
+        if (ctx.state.user.username) await next()
         else ctx.json({ code: 401, msg: '未登录' })
     })
 
@@ -16,7 +16,8 @@ module.exports = function (koa, config, db) {
         const title = ctx.request.body.title
         const content = ctx.request.body.content
         const author = ctx.state.user.username
-        if (!title || !content || !author) return ctx.json({ code: 400, msg: '参数不足' })
+        const log = ctx.request.body.log
+        if (!title || !content || !author || !log) return ctx.json({ code: 400, msg: '参数不足' })
         const res = await db.collection('articles').insertOne({ title, content, visibility: 1, history_total: 1 })
         await db.collection('history').insertOne({
             num: 1,
@@ -25,7 +26,8 @@ module.exports = function (koa, config, db) {
             belong: res.ops[0]._id,
             data: { title, content, visibility: 1 },
             state: { title: true, content: true, visibility: true },
-            history_visibility: 1
+            history_visibility: 1,
+            log
         })
         ctx.json({ code: 200, article: res.ops[0] })
     })
@@ -33,7 +35,7 @@ module.exports = function (koa, config, db) {
     // 修改文章内容: 可见性, 标题和内容
     app.post('/api/article/:id', async ctx => {
         const article = await db.collection('articles').findOne({ _id: ObjectId(ctx.params.id) })
-        if (!article || article.visibility > ctx.state.user.permission) return ctx.json({ code: 404, msg: '找不到此文章'})
+        if (!article || article.visibility > ctx.state.user.permission) return ctx.json({ code: 404, msg: '找不到此文章' })
         const update = { $set: {} }
         const history = {
             belong: article._id,
@@ -49,7 +51,8 @@ module.exports = function (koa, config, db) {
                 content: false,
                 visibility: false,
             },
-            history_visibility: 1
+            history_visibility: 1,
+            log: ctx.request.body.log
         }
         if (ctx.request.body.visibility) {
             // 检查修改权限
@@ -58,11 +61,11 @@ module.exports = function (koa, config, db) {
                 history.state.visibility = true
             } else return ctx.json({ code: 400, msg: '权限不足' })
         }
-        if (ctx.request.body.title) {
+        if (ctx.request.body.title !== undefined) {
             history.data.title = update.$set.title = ctx.request.body.title
             history.state.title = true
         }
-        if (ctx.request.body.content) {
+        if (ctx.request.body.content !== undefined) {
             history.data.content = update.$set.content = ctx.request.body.content
             history.state.content = true
         }

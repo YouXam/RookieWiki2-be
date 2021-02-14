@@ -17,5 +17,6 @@ module.exports = {
         //     icon: 'mdi-tools'
         // }
     ],
-    home: '601ea2c60a323249404a7120'
+    home: '6028f7a6728fb7336cfedf2d',
+    history_size: 100
 }
