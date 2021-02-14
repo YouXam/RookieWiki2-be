@@ -33,7 +33,7 @@ module.exports = function (koa, config, db) {
             ]
         } : { visibility: { $lte: ctx.state.user.permission } }
         const query = db.collection('articles').find(args)
-        const articles = await query.skip((page - 1) * size).limit(size).toArray()
+        const articles = await query.sort({ _id: -1 }).skip((page - 1) * size).limit(size).toArray()
         const total = await query.count()
         ctx.json({ code: 200, articles, total, size })
     })
