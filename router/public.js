@@ -76,7 +76,8 @@ module.exports = function (koa, config, db) {
         const username = ctx.request.body.username
         const password = ctx.request.body.password
         if (!username || !password) return ctx.json({ code: 400, msg: '参数不足' })
-        const person = await db.collection('users').findOne({ username })
+        const person = await db.collection('users').findOne({ $or: [ { username }, { email: username }] })
+        console.log(person)
         if (person && person.password === password) {
             const token = jwt.sign({ username }, config.secret, { expiresIn: config.expires })
             ctx.json({ code: 200, msg: '登录成功', token })
