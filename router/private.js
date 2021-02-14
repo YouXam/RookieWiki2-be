@@ -17,7 +17,7 @@ module.exports = function (koa, config, db) {
         const content = ctx.request.body.content
         const author = ctx.state.user.username
         const log = ctx.request.body.log
-        if (!title || !content || !author || !log) return ctx.json({ code: 400, msg: '参数不足' })
+        if (!title || !content || !author) return ctx.json({ code: 400, msg: '参数不足' })
         const res = await db.collection('articles').insertOne({ title, content, visibility: 1, history_total: 1 })
         await db.collection('history').insertOne({
             num: 1,
