@@ -56,7 +56,7 @@ module.exports = function (koa, config, db) {
         const article = await db.collection('articles').findOne({ _id: ObjectId(ctx.params.id)}, { projection: { visibility: 1 }})
         let page = parseInt(ctx.query.page) || 1
         page = page < 1 ? 1 : page
-        const query = db.collection('history').find({ belong: ObjectId(ctx.params.id), history_visibility: { $lte: ctx.state.user.permission } })
+        const query = db.collection('history').find({ belong: ObjectId(ctx.params.id), history_visibility: { $lte: ctx.state.user.permission } }, { projection: { data: 0 }})
         const histories = await query.sort({ date: -1 }).skip((page - 1) * config.history_size).limit(config.history_size).toArray()
         const total = await query.count()
         if (article.visibility <= ctx.state.user.permission) ctx.json({ code: 200, histories, total, size: config.history_size })
@@ -79,7 +79,7 @@ module.exports = function (koa, config, db) {
         const person = await db.collection('users').findOne({ $or: [ { username }, { email: username }] })
         console.log(person)
         if (person && person.password === password) {
-            const token = jwt.sign({ username }, config.secret, { expiresIn: config.expires })
+            const token = jwt.sign({ username: person.username }, config.secret, { expiresIn: config.expires })
             ctx.json({ code: 200, msg: '登录成功', token })
         } else
             ctx.json({ code: 401, msg: '登录失败' })
