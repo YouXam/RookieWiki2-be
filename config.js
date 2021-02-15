@@ -18,5 +18,6 @@ module.exports = {
         // }
     ],
     home: '6028f7a6728fb7336cfedf2d',
-    history_size: 100
+    history_size: 100,
+    cors: true,
 }
