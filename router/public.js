@@ -53,7 +53,13 @@ module.exports = function (koa, config, db) {
     
     // 获取文章历史记录
     app.get('/api/article/:id/history', async ctx => {
-        const article = await db.collection('articles').findOne({ _id: ObjectId(ctx.params.id)}, { projection: { visibility: 1 }})
+        if (ctx.query.num) {
+            const history = await db.collection('history').findOne({ belong: ObjectId(ctx.params.id), num: parseInt(ctx.query.num)})
+            if (history && history.history_visibility <= ctx.state.user.permission) ctx.json({ code: 200, history })
+            else ctx.json({ code: 404, msg: '找不到历史记录' })
+            return
+        }
+        const article = await db.collection('articles').findOne({ _id: ObjectId(ctx.params.id) }, { projection: { visibility: 1 }})
         let page = parseInt(ctx.query.page) || 1
         page = page < 1 ? 1 : page
         const query = db.collection('history').find({ belong: ObjectId(ctx.params.id), history_visibility: { $lte: ctx.state.user.permission } }, { projection: { data: 0 }})
