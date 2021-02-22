@@ -20,4 +20,14 @@ module.exports = {
     home: '6028f7a6728fb7336cfedf2d',
     history_size: 100,
     cors: true,
+    email: {
+        host: 'smtp.163.com',
+        port: '465',
+        secure: true,
+        auth: {
+            user: 'rookiewiki@163.com',
+            pass: 'RQNTRPMSMRLMUTZD',
+        },
+    },
+    base: 'http://localhost:8080'
 }
