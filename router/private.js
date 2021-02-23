@@ -5,11 +5,30 @@ const app = new Router()
 const { getParams } = require('../lib/tools')
 // eslint-disable-next-line no-unused-vars
 module.exports = function (koa, config, db) {
+
     // 未登录时返回错误信息
     app.use(async (ctx, next) => {
         if (ctx.state.user.permission <= 0) return ctx.json({ code: 401, msg: '您已被封禁' })
         if (ctx.state.user.username) await next()
         else ctx.json({ code: 401, msg: '未登录' })
+    })
+
+    // 获取用户信息
+    app.get('/api/user/:username', async ctx => {
+        const user = await db.collection('users').findOne({ username: ctx.params.username }, { projection: { password: 0 } })
+        if (user) ctx.json({ code: 200, data: user })
+        else ctx.json({ code: 404, msg: '找不到用户'})
+    })
+    app.get('/api/user', async ctx => {
+        const user = await db.collection('users').findOne({ username: ctx.state.user.username }, { projection: { password: 0 } })
+        ctx.json({ code: 200, data: user })
+    })
+
+    // 检查是否激活了邮件
+
+    app.use(async (ctx, next) => {
+        if (!ctx.state.user.verified) return ctx.json({ code: 423, msg: '请激活邮件' })
+        await next()
     })
 
     // 新建文章
@@ -89,17 +108,6 @@ module.exports = function (koa, config, db) {
         if (!res || res.history_visibility > ctx.state.user.permission) return ctx.json({ code: 404, msg: '找不到历史记录'})
         await db.collection('history').updateOne({ _id: hid, belong: aid }, { $set: { history_visibility: visibility }})
         ctx.json({ code: 200, msg: '修改成功' })
-    })
-    
-    // 获取用户信息
-    app.get('/api/user', async ctx => {
-        const user = await db.collection('users').findOne({ username: ctx.state.user.username }, { projection: { password: 0 } })
-        ctx.json({ code: 200, data: user })
-    })
-    app.get('/api/user/:username', async ctx => {
-        const user = await db.collection('users').findOne({ username: ctx.params.username }, { projection: { password: 0 } })
-        if (user) ctx.json({ code: 200, data: user })
-        else ctx.json({ code: 404, msg: '找不到用户'})
     })
 
     // 激活邮件
