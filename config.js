@@ -26,7 +26,7 @@ module.exports = {
         secure: true,
         auth: {
             user: 'rookiewiki@163.com',
-            pass: 'RQNTRPMSMRLMUTZD',
+            pass: '',
         },
     },
     base: 'http://localhost:8080'
