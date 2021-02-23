@@ -1,6 +1,8 @@
 const Router = require('koa-router')
 const jwt = require('jsonwebtoken')
 const app = new Router()
+const uuid = require('uuid')
+const { find } = require('../lib/mail')
 const { getParams } = require('../lib/tools')
 
 module.exports = function (koa, config, db) {
@@ -120,6 +122,40 @@ module.exports = function (koa, config, db) {
         } else {
             if (res) await db.collection('verify').deleteOne({ uuid: ctx.query.token })
             ctx.json({ code: 400, msg: '无法验证, 可能是已过期' })
+        }
+    })
+
+    
+    // 找回密码
+    app.post('/api/find', async ctx => {
+        const username = ctx.request.body.username
+        if (!username) return ctx.json({ code: 400, msg: '参数不足' })
+        const user = await db.collection('users').findOne({ $or: [ { username }, { email: username }] })
+        if (!user) return ctx.json({ code: 404, msg: '找不到此用户' })
+        if (!user.last_find || (new Date() - new Date(user.last_find)) >= 5 * 60 * 1000) {
+            const id = uuid.v4()
+            await db.collection('reset').insertOne({ user: user._id, date: new Date(), uuid: id })
+            await find(user.email, user.username, id)
+            const now = new Date()
+            await db.collection('users').updateOne({ _id: user._id }, { $set: { last_find: now }})
+            ctx.json({ code: 200, msg: '邮件已发送, 15分钟内有效, 请注意检查垃圾邮件', time: now })
+        } else ctx.json({ code: 401, msg: '请等待一段时间再重试', time: user.last_find })
+    })
+    
+
+    // 重置密码
+    app.post('/api/reset', async ctx => {
+        const token = ctx.request.body.token
+        const password = ctx.request.body.password
+        if (!token || !password) return ctx.json({ code: 400, msg: '参数不足' })
+        const res = await db.collection('reset').findOne({ uuid: token })
+        if (res && (new Date()) - res.date <= 15 * 60 * 1000) {
+            ctx.json({ code: 200, msg: '重置成功' })
+            await db.collection('users').updateOne({ _id: res.user }, { $set: { password }})
+            await db.collection('reset').deleteOne({ uuid: token })
+        } else {
+            if (res) await db.collection('reset').deleteOne({ uuid: token })
+            ctx.json({ code: 400, msg: '无法重置密码, 可能是已过期' })
         }
     })
 
