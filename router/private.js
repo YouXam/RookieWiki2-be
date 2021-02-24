@@ -8,9 +8,10 @@ module.exports = function (koa, config, db) {
 
     // 未登录时返回错误信息
     app.use(async (ctx, next) => {
-        if (ctx.state.user.permission <= 0) return ctx.json({ code: 401, msg: '您已被封禁' })
-        if (ctx.state.user.username) await next()
-        else ctx.json({ code: 401, msg: '未登录' })
+        if (ctx.state.user.username) {
+            if (ctx.state.user.permission <= 0) return ctx.json({ code: 401, msg: '您已被封禁' })
+            await next()
+        } else ctx.json({ code: 401, msg: '未登录' })
     })
 
     // 获取用户信息
@@ -88,7 +89,8 @@ module.exports = function (koa, config, db) {
         const id = getParams(ctx, '找不到文章')
         if (!id) return
         const article = await db.collection('articles').findOne({ _id: id })
-        if (!article || article.visibility > ctx.state.user.permission) return ctx.json({ code: 404, msg: '找不到此文章' })
+        if (!article || (article.visibility >= 3 && ctx.state.user.permission <= 1)) return ctx.json({ code: 404, msg: '找不到此文章' })
+        if (article.visibility >= 2 && ctx.state.user.permission <= 1) return ctx.json({ code: 424, msg: '权限不足' })
         const update = { $set: {} }
         const history = {
             belong: article._id,
@@ -133,12 +135,11 @@ module.exports = function (koa, config, db) {
     // 修改历史记录可见性
     app.post('/api/article/:aid/history/:hid', async ctx => {
         const hid = getParams(ctx, '找不到历史记录', 'hid'), aid = getParams(ctx, '找不到历史记录', 'aid')
-        if (!hid || !aid) return
-        if (!ctx.request.body.visibility) return ctx.json({ code: 400, msg: '参数不足'})
         const visibility = parseInt(ctx.request.body.visibility)
-        if (!visibility || visibility > ctx.state.user.permission) return ctx.json({ code: 404, msg: '权限不足'})
+        if (!visibility || !hid || !aid) return ctx.json({ code: 400, msg: '参数不足'})
+        if (visibility > ctx.state.user.permission) return ctx.json({ code: 404, msg: '权限不足'})
         const res = await db.collection('history').findOne({ _id: hid, belong: aid })
-        if (!res || res.history_visibility > ctx.state.user.permission) return ctx.json({ code: 404, msg: '找不到历史记录'})
+        if (!res || (res.history_visibility > 1 && ctx.state.user.permission < 2)) return ctx.json({ code: 404, msg: '找不到历史记录'})
         await db.collection('history').updateOne({ _id: hid, belong: aid }, { $set: { history_visibility: visibility }})
         ctx.json({ code: 200, msg: '修改成功' })
     })

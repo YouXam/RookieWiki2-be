@@ -22,7 +22,7 @@ module.exports = function (koa, config, db) {
         const args = ctx.query.search ? {
             $and: [
                 {
-                    visibility: { $lte: ctx.state.user.permission }
+                    visibility: { $lte: ctx.state.user.permission > 1 ? 3 : 2 }
                 },
                 {
                     $or: [
@@ -31,7 +31,7 @@ module.exports = function (koa, config, db) {
                     ]
                 }
             ]
-        } : { visibility: { $lte: ctx.state.user.permission } }
+        } : { visibility: { $lte: ctx.state.user.permission > 1 ? 3 : 2 } }
         const query = db.collection('articles').find(args)
         const articles = await query.sort({ _id: -1 }).skip((page - 1) * size).limit(size).toArray()
         const total = await query.count()
@@ -42,7 +42,7 @@ module.exports = function (koa, config, db) {
     app.get('/api/article/:id', async ctx => {
         const id = getParams(ctx, '找不到文章')
         if (!id) return
-        const article = await db.collection('articles').findOne({ _id: id, visibility: { $lte: ctx.state.user.permission } })
+        const article = await db.collection('articles').findOne({ _id: id, visibility: { $lte: ctx.state.user.permission > 1 ? 3 : 2 } })
         if (article) ctx.json({ code: 200, article })
         else ctx.json({ code: 404, msg: '找不到文章' })
     })
@@ -63,8 +63,8 @@ module.exports = function (koa, config, db) {
         const query = db.collection('history').find({ belong: id, history_visibility: { $lte: ctx.state.user.permission } }, { projection: { data: 0 }})
         const histories = await query.sort({ date: -1 }).skip((page - 1) * config.history_size).limit(config.history_size).toArray()
         const total = await query.count()
-        if (article && article.visibility <= ctx.state.user.permission) ctx.json({ code: 200, histories, total, size: config.history_size })
-        else ctx.json({ code: 404, msg: '找不到历史记录' })
+        if (!article || (article.visibility >= 3 && ctx.state.user.permission <= 1)) ctx.json({ code: 404, msg: '找不到历史记录' })
+        else ctx.json({ code: 200, histories, total, size: config.history_size })
     })
 
     // 获取历史记录详细信息
@@ -74,8 +74,8 @@ module.exports = function (koa, config, db) {
         const article = await db.collection('articles').findOne({ _id: aid }, { projection: { visibility: 1 }})
         if (!article) return ctx.json({ code: 404, msg: '找不到文章' })
         const history = await db.collection('history').findOne({ _id: hid, belong: aid })
-        if (history && article.visibility <= ctx.state.user.permission && history.history_visibility <= ctx.state.user.permission) ctx.json({ code: 200, data: history })
-        else ctx.json({ code: 404, msg: '找不到历史记录' })
+        if (!history || (article.visibility > 2 && ctx.state.user.permission < 3) || history.history_visibility > ctx.state.user.permission) ctx.json({ code: 404, msg: '找不到历史记录' })
+        else ctx.json({ code: 200, data: history })
     })
 
     // 登录
