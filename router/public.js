@@ -159,5 +159,17 @@ module.exports = function (koa, config, db) {
         }
     })
 
+    // 获取用户信息
+    app.get('/api/user/:username', async ctx => {
+        const user = await db.collection('users').findOne({ username: ctx.params.username }, { projection: { password: 0 } })
+        if (user) ctx.json({ code: 200, data: user })
+        else ctx.json({ code: 404, msg: '找不到用户'})
+    })
+    app.get('/api/user', async ctx => {
+        const user = await db.collection('users').findOne({ username: ctx.state.user.username }, { projection: { password: 0 } })
+        ctx.json({ code: 200, data: user })
+    })
+    
+
     koa.use(app.routes())
 }

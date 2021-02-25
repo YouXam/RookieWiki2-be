@@ -9,20 +9,9 @@ module.exports = function (koa, config, db) {
     // 未登录时返回错误信息
     app.use(async (ctx, next) => {
         if (ctx.state.user.username) {
-            if (ctx.state.user.permission <= 0) return ctx.json({ code: 401, msg: '您已被封禁' })
+            if (ctx.state.user.permission <= 0) return ctx.json({ code: 425, msg: '您已被封禁' })
             await next()
         } else ctx.json({ code: 401, msg: '未登录' })
-    })
-
-    // 获取用户信息
-    app.get('/api/user/:username', async ctx => {
-        const user = await db.collection('users').findOne({ username: ctx.params.username }, { projection: { password: 0 } })
-        if (user) ctx.json({ code: 200, data: user })
-        else ctx.json({ code: 404, msg: '找不到用户'})
-    })
-    app.get('/api/user', async ctx => {
-        const user = await db.collection('users').findOne({ username: ctx.state.user.username }, { projection: { password: 0 } })
-        ctx.json({ code: 200, data: user })
     })
 
     // 激活邮件
@@ -146,7 +135,7 @@ module.exports = function (koa, config, db) {
 
     // 检查管理员权限
     app.use(async (ctx, next) => {
-        if (ctx.state.user.permission < 2) return ctx.json({ code: 401, msg: '权限不足' })
+        if (ctx.state.user.permission <= 1) return ctx.json({ code: 401, msg: '权限不足' })
         await next()
     })
 
